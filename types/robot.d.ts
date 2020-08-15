@@ -4,42 +4,42 @@ import { EventEmitter } from 'events';
 import WorkpathManager from './workpath-manager';
 import { util } from './util';
 import { Plugin } from './plugin';
+import JsonStorage from './workpath-manager/json-storage';
 
-interface CQNodeConfig {
-  /** 管理员 */
-  admin: number[];
-  /** 加载的模块 */
-  modules: Module[];
-  /** 加载的插件 */
-  plugins: any[];
-  /** 数据文件夹 */
-  workpath: string;
-  /**
-   * atme判断字符串  
-   * 以该字符串开头的信息会被认为at了本机器人  
-   * 默认使用QQ的at  
-   * 空字符串表示将任何消息当作at了本机器人
-   */
-  atmeTrigger: Array<string | true>;
-  connector: {
-    LISTEN_PORT: number;
-    API_PORT: number;
-    TIMEOUT: number;
-    ACCESS_TOKEN?: string;
-  }
+/**
+ * module加载信息
+ */
+export interface LoadModuleObject {
+  /** 加载模块路径名或npm包名 */
+  entry: string;
+  /** 模块构造函数参数 */
+  constructorParams?: any[]; 
+  /** 模块默认配置对象 */
+  config?: any; 
+  /** 模块meta信息 */
+  meta?: any;
+  enable?: boolean;
 }
 
 export interface ConfigObject {
-  /** 
+  /**
    * 管理员
+   * @deprecated 此配置项将在未来版本被权限系统替代
    */
   admin?: number | number[];
   /** 加载的模块 */
-  modules?: Module[];
+  modules?: LoadModuleObject[];
   /** 加载的插件 */
-  plugins?: any[];
+  plugins?: LoadModuleObject[];
   /** 数据文件夹 */
   workpath?: string;
+  /**
+   * atme判断字符串  
+   * 以该字符串开头的信息会被任务at了本机器人  
+   * 默认使用QQ的at  
+   * 空字符串表示将任何消息当作at了本机器人
+   */
+  atmeTrigger?: string | true | Array<string | true>;
   /** HTTP API 连接配置 */
   connector?: {
     /** 事件监听接口 */
@@ -51,16 +51,48 @@ export interface ConfigObject {
     /** access_token */
     ACCESS_TOKEN?: string;
   };
+}
+
+export interface GroupConfig {
+  auth?: {
+    [userId: number]: string[]
+  };
+  modules?: {
+    [entry: string]: {
+      enable?: boolean;
+      config?: any;
+    };
+  }
+}
+
+export interface CQNodeOptions {
+  workpath?: string;
+}
+
+export interface CQNodeConfig extends Required<ConfigObject> {
+  admin: number[];
   /**
    * atme判断字符串  
-   * 以该字符串开头的信息会被任务at了本机器人  
+   * 以该字符串开头的信息会被认为at了本机器人  
    * 默认使用QQ的at  
    * 空字符串表示将任何消息当作at了本机器人
    */
-  atmeTrigger?: string | true | Array<string | true>;
+  atmeTrigger: Array<string | true>;
+  /** HTTP API 连接配置 */
+  connector: {
+    /** 事件监听接口 */
+    LISTEN_PORT: number;
+    /** HTTP API接口 */
+    API_PORT: number;
+    /** 事件处理超时时长（毫秒） */
+    TIMEOUT: number;
+    /** access_token */
+    ACCESS_TOKEN?: string;
+  }
 }
+
 /** CQNode运行时信息 */
-interface CQNodeInf {
+export interface CQNodeInf {
   /** inf是否已获取 */
   inited: boolean;
   /** api.getLoginInfo, 当前登录号信息 */
@@ -91,26 +123,45 @@ interface CQNodeInf {
   /** CQNode版本 */
   CQNodeVersion: string;
   /** 群列表 */
-  groupList: CQHTTP.GetGroupListResponseData[];
+  groupList: CQHTTP.GetGroupListResponseData;
 }
 
 export class Robot extends EventEmitter {
   static CQNode: {
-    createRobot(config: ConfigObject): Robot;
+    createRobot(config?: ConfigObject | string): Robot;
     Module: typeof Module;
     Plugin: typeof Plugin;
     util: typeof util;
   };
   /** CQNode配置 */
-  config: CQNodeConfig;
+  config: JsonStorage<CQNodeConfig>;
+  /** CQNode启动参数 */
+  options: CQNodeOptions;
+  /** 群配置 */
+  groupConfig: {
+    [group: number]: JsonStorage<GroupConfig>,
+    /** 获取群配置 */
+    get(group: number): GroupConfig | null,
+    /** 保存群配置 */
+    save(group: number, config: GroupConfig): boolean,
+  }
   /** 已加载的模块 */
-  modules: Module[];
+  modules: {
+    [key: string]: {
+      module: Module;
+    };
+  };
   /** CQNode运行时信息 */
   inf: CQNodeInf;
   /** CQ HTTP API */
   api: CQAPI;
-  /** @WIP workpath */
+  /**
+   * workpath
+   * @deprecated 请使用cqnode.workpath
+   */
   workpathManager: WorkpathManager;
+  /** workpath */
+  workpath: WorkpathManager;
 }
 export interface Robot {
   constructor: typeof Robot;

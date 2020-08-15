@@ -1,10 +1,11 @@
 import { CQResponse } from './response';
 import { CQEvent } from './cq-http';
 import { Robot } from './robot';
+import { OptionalPromisify } from './type';
 
 /** 模块信息 */
 export interface CQNodeModuleInf {
-  /** 模块包名，应保证唯一，名称中不能包含无法作为文件名的字符，`/`会被替换为`.` */
+  /** 模块包名，应保证唯一，名称中不能包含无法作为文件路径名的字符，建议同npm包名 */
   packageName?: string;
   /** 模块名 */
   name?: string;
@@ -16,7 +17,7 @@ export interface CQNodeModuleInf {
 }
 
 type EventResult = boolean | void | CQResponse.Response;
-export type EventReturns = EventResult | Promise<EventResult>;
+export type EventReturns = OptionalPromisify<EventResult>;
 
 /** CQNode模块 */
 export class Module {
